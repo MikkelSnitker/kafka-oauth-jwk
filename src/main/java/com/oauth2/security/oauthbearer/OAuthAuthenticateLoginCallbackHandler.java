@@ -16,7 +16,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import org.apache.kafka.common.utils.Time;
+
 public class OAuthAuthenticateLoginCallbackHandler implements AuthenticateCallbackHandler {
+
+    private static Time time = Time.SYSTEM;
+
     private final Logger log = LoggerFactory.getLogger(OAuthAuthenticateLoginCallbackHandler.class);
     private Map<String, String> moduleOptions = null;
     private boolean configured = false;
@@ -24,12 +29,21 @@ public class OAuthAuthenticateLoginCallbackHandler implements AuthenticateCallba
     @Override
     public void configure(Map<String, ?> map, String saslMechanism, List<AppConfigurationEntry> jaasConfigEntries) {
         if (!OAuthBearerLoginModule.OAUTHBEARER_MECHANISM.equals(saslMechanism))
-            throw new IllegalArgumentException(String.format("Unexpected SASL mechanism: %s", saslMechanism));
-        if (Objects.requireNonNull(jaasConfigEntries).size() != 1 || jaasConfigEntries.get(0) == null)
-            throw new IllegalArgumentException(
-                    String.format("Must supply exactly 1 non-null JAAS mechanism configuration (size was %d)",
-                            jaasConfigEntries.size()));
-        this.moduleOptions = Collections.unmodifiableMap((Map<String, String>) jaasConfigEntries.get(0).getOptions());
+        throw new IllegalArgumentException(String.format("Unexpected SASL mechanism: %s", saslMechanism));
+    if (Objects.requireNonNull(jaasConfigEntries).size() != 1 || jaasConfigEntries.get(0) == null)
+        throw new IllegalArgumentException(
+                String.format("Must supply exactly 1 non-null JAAS mechanism configuration (size was %d)",
+                        jaasConfigEntries.size()));
+    this.moduleOptions = Collections.unmodifiableMap((Map<String, String>) jaasConfigEntries.get(0).getOptions());
+    
+    log.info("############################################");
+    for (Map.Entry<String, String> entry : this.moduleOptions.entrySet()) {
+        log.info(entry.getKey() + "/" + entry.getValue());
+    }
+
+    log.info("############################################");
+    configured = true;
+
 
         configured = true;
     }
@@ -49,6 +63,7 @@ public class OAuthAuthenticateLoginCallbackHandler implements AuthenticateCallba
         for (Callback callback : callbacks) {
             if (callback instanceof OAuthBearerTokenCallback)
                 try {
+                    
                     handleCallback((OAuthBearerTokenCallback) callback);
                 } catch (KafkaException e) {
                     throw new IOException(e.getMessage(), e);
@@ -59,16 +74,7 @@ public class OAuthAuthenticateLoginCallbackHandler implements AuthenticateCallba
     }
 
     private void handleCallback(OAuthBearerTokenCallback callback){
-        if (callback.token() != null)
-            throw new IllegalArgumentException("Callback had a token already");
-
-        log.info("Try to acquire token!");
-        OAuthBearerTokenJwt token = OAuthHttpCalls.login(this.moduleOptions);
-        log.info("Retrieved token..");
-        if(token == null){
-            throw new IllegalArgumentException("Null token returned from server");
-        }
-        callback.token(token);
+        log.info("LOGIN HANDLECALLBACK");
     }
 
 }
